@@ -8,6 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Cinzel:wght@400;500;600;700&family=IM+Fell+English+SC&family=Uncial+Antiqua&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="auth-fix.css">
 </head>
 <body style="--brilho-xp-escala: 1;">
 
@@ -31,20 +32,24 @@
         <div id="hud-players-list"></div>
     </div>
 
-    <div id="tela-login">
-        <div style="position:absolute;top:8px;right:8px;width:50px;height:50px;border-top:2px solid #8b6d43;border-right:2px solid #8b6d43;pointer-events:none;"></div>
-        <div style="position:absolute;bottom:8px;left:8px;width:50px;height:50px;border-bottom:2px solid #8b6d43;border-left:2px solid #8b6d43;pointer-events:none;"></div>
+    <div id="tela-login" class="auth-card">
+        <div class="auth-corner auth-corner-top"></div>
+        <div class="auth-corner auth-corner-bottom"></div>
+
         <h2 id="login-title">Entrada da Mesa</h2>
-        <div style="display:flex; gap:10px; justify-content:center; margin-bottom:15px;">
-            <button type="button" id="tab-login" onclick="mostrarAbaAuth('login')">Entrar</button>
-            <button type="button" id="tab-register" onclick="mostrarAbaAuth('register')">Criar acesso</button>
+
+        <div class="auth-tabs">
+            <button type="button" id="tab-login" class="auth-tab active" onclick="mostrarAbaAuth('login')">Entrar</button>
+            <button type="button" id="tab-register" class="auth-tab" onclick="mostrarAbaAuth('register')">Criar acesso</button>
         </div>
-        <div id="auth-login-panel">
+
+        <div id="auth-login-panel" class="auth-panel">
             <input type="text" id="input-usuario" placeholder="Usuário" autocomplete="username">
             <input type="password" id="input-senha" placeholder="Senha" autocomplete="current-password">
-            <button id="btn-login-wax" onclick="fazerLogin()">Entrar</button>
+            <button id="btn-login-wax" type="button" onclick="fazerLogin()">Entrar</button>
         </div>
-        <div id="auth-register-panel" style="display:none;">
+
+        <div id="auth-register-panel" class="auth-panel" style="display:none;">
             <input type="text" id="input-cadastro-usuario" placeholder="Usuário" autocomplete="username">
             <input type="password" id="input-cadastro-senha" placeholder="Senha" autocomplete="new-password">
             <input type="password" id="input-cadastro-confirmar" placeholder="Confirmar senha" autocomplete="new-password">
@@ -55,9 +60,10 @@
                 <option value="ficha4">Ficha 4</option>
                 <option value="master">Mestre</option>
             </select>
-            <button onclick="criarAcesso()">Criar acesso</button>
+            <button type="button" onclick="criarAcesso()">Criar acesso</button>
         </div>
-        <p id="msg-erro" style="color: #8c1c13; font-size: 14px; margin-top: 20px; display: none; font-weight: bold; text-shadow: none;"></p>
+
+        <p id="msg-erro"></p>
     </div>
 
 

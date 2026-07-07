@@ -1,120 +1,151 @@
-/* Correção da tela de autenticação criada após a migração para usuário + senha.
-   Mantém o visual medieval, mas impede que os elementos do login fiquem em linha. */
+/* Correções específicas da tela de autenticação.
+   Mantém o tema medieval sem depender de seletores frágeis ou estilos inline. */
 
-#tela-login {
+#tela-login.auth-card {
     display: flex;
     flex-direction: column;
     align-items: stretch;
     justify-content: flex-start;
     gap: 14px;
-    width: min(420px, calc(100vw - 40px));
-    max-width: 420px;
-    min-height: auto;
+    width: min(460px, calc(100vw - 40px));
+    max-width: 460px;
     box-sizing: border-box;
     overflow: visible;
+    margin: 10vh auto 0;
+    padding: 38px 34px 34px;
+    text-align: center;
+    z-index: 1;
+}
+
+#tela-login.auth-card * {
+    box-sizing: border-box;
+}
+
+#tela-login .auth-corner {
+    position: absolute;
+    width: 50px;
+    height: 50px;
+    pointer-events: none;
+}
+
+#tela-login .auth-corner-top {
+    top: 8px;
+    right: 8px;
+    border-top: 2px solid #8b6d43;
+    border-right: 2px solid #8b6d43;
+}
+
+#tela-login .auth-corner-bottom {
+    bottom: 8px;
+    left: 8px;
+    border-bottom: 2px solid #8b6d43;
+    border-left: 2px solid #8b6d43;
 }
 
 #tela-login #login-title {
     width: 100%;
-    box-sizing: border-box;
-    text-align: center;
-    line-height: 1.12;
-    margin-bottom: 4px;
-    white-space: normal;
+    margin: 0;
 }
 
-#tela-login > div[style*="display:flex"] {
-    width: 100%;
-    display: grid !important;
+#tela-login .auth-tabs {
+    display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 10px !important;
-    margin: 0 0 4px 0 !important;
-}
-
-#tab-login,
-#tab-register {
+    gap: 10px;
     width: 100%;
-    min-height: 52px;
-    padding: 10px 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    white-space: normal;
-    text-align: center;
-    line-height: 1.15;
 }
 
-#auth-login-panel,
-#auth-register-panel {
+#tela-login .auth-tab,
+#tela-login .auth-panel button {
     width: 100%;
-    box-sizing: border-box;
+    min-height: 42px;
+    border-radius: 3px;
+    cursor: pointer;
 }
 
-#auth-login-panel input,
-#auth-register-panel input,
-#auth-register-panel select {
+#tela-login .auth-tab {
+    background: rgba(58, 34, 18, 0.12);
+    border: 1px solid #8b6d43;
+    color: #3a2212;
+    font-family: 'Cinzel', 'Georgia', serif;
+    font-weight: 700;
+    letter-spacing: 1px;
+    padding: 10px 12px;
+}
+
+#tela-login .auth-tab.active {
+    background: linear-gradient(to bottom, #8c1c13, #5c1818);
+    border-color: #5c1818;
+    color: #e4d5b7;
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.35);
+}
+
+#tela-login .auth-panel {
+    width: 100%;
+    display: block;
+}
+
+#tela-login .auth-panel input,
+#tela-login .auth-panel select {
     display: block;
     width: 100%;
-    box-sizing: border-box;
-    margin: 0 0 10px 0;
-    font-size: 15px;
-    padding: 11px 10px;
-    text-align: center;
-    background-color: rgba(255,255,255,0.24);
+    max-width: 100%;
+    min-height: 42px;
+    margin: 0 0 10px;
+    padding: 10px 12px;
     border: 1px solid #8b6d43;
+    border-radius: 3px;
+    background: rgba(255, 250, 235, 0.72);
     color: #1a0f0a;
-    box-shadow: inset 0 0 8px rgba(60,35,18,0.12);
+    font-family: 'Cinzel', 'Georgia', serif;
+    font-size: 15px;
+    text-align: left;
+    box-shadow: inset 0 0 10px rgba(92, 58, 33, 0.12);
 }
 
-#auth-login-panel input::placeholder,
-#auth-register-panel input::placeholder {
-    color: #6b4d31;
-}
-
-#auth-login-panel input:focus,
-#auth-register-panel input:focus,
-#auth-register-panel select:focus {
+#tela-login .auth-panel input:focus,
+#tela-login .auth-panel select:focus {
     outline: none;
     border-color: #8c1c13;
-    background-color: rgba(255,255,255,0.42);
+    box-shadow: 0 0 0 2px rgba(140, 28, 19, 0.14), inset 0 0 10px rgba(92, 58, 33, 0.12);
 }
 
-#auth-login-panel #input-senha {
-    font-size: 15px;
-    font-weight: normal;
-    font-family: Georgia, serif;
-    border: 1px solid #8b6d43;
-    border-bottom: 1px solid #8b6d43;
-    margin-bottom: 12px;
+#tela-login #input-senha,
+#tela-login #input-cadastro-senha,
+#tela-login #input-cadastro-confirmar {
+    font-size: 15px !important;
+    letter-spacing: normal !important;
+    text-align: left !important;
+    border: 1px solid #8b6d43 !important;
+    border-bottom: 1px solid #8b6d43 !important;
+    margin-bottom: 10px !important;
+    padding: 10px 12px !important;
+    width: 100% !important;
+    background: rgba(255, 250, 235, 0.72) !important;
+    box-shadow: inset 0 0 10px rgba(92, 58, 33, 0.12) !important;
+    text-shadow: none !important;
 }
 
-#auth-login-panel button,
-#auth-register-panel button {
+#tela-login #msg-erro {
+    display: none;
     width: 100%;
-    margin-top: 4px;
+    margin: 0;
+    padding: 10px 12px;
+    border: 1px solid rgba(140, 28, 19, 0.45);
+    background: rgba(140, 28, 19, 0.08);
+    color: #8c1c13;
+    font-size: 14px;
+    font-weight: 700;
+    text-shadow: none;
 }
 
-#msg-erro {
-    width: 100%;
-    box-sizing: border-box;
-    margin: 6px 0 0 0 !important;
-    padding: 8px 10px;
-    border: 1px solid rgba(140,28,19,0.32);
-    background: rgba(140,28,19,0.08);
-    border-radius: 3px;
-}
-
-@media (max-width: 520px) {
-    #tela-login {
-        padding: 34px 22px;
-        margin-top: 8vh;
+@media (max-width: 480px) {
+    #tela-login.auth-card {
+        width: min(100% - 24px, 460px);
+        margin-top: 24px;
+        padding: 32px 20px 26px;
     }
 
-    #tela-login #login-title {
-        font-size: 26px;
-    }
-
-    #tela-login > div[style*="display:flex"] {
+    #tela-login .auth-tabs {
         grid-template-columns: 1fr;
     }
 }

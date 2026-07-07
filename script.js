@@ -1298,10 +1298,21 @@ window.toggleSidebarJogador = function(numSlot) {
         // LÓGICA DE AUTENTICAÇÃO E INICIALIZAÇÃO
         // ==========================================
         window.mostrarAbaAuth = function(aba) {
-            document.getElementById('auth-login-panel').style.display = aba === 'login' ? 'block' : 'none';
-            document.getElementById('auth-register-panel').style.display = aba === 'register' ? 'block' : 'none';
+            const loginPanel = document.getElementById('auth-login-panel');
+            const registerPanel = document.getElementById('auth-register-panel');
+            const loginTab = document.getElementById('tab-login');
+            const registerTab = document.getElementById('tab-register');
             const erro = document.getElementById('msg-erro');
-            if(erro) erro.style.display = 'none';
+
+            if(loginPanel) loginPanel.style.display = aba === 'login' ? 'block' : 'none';
+            if(registerPanel) registerPanel.style.display = aba === 'register' ? 'block' : 'none';
+            loginTab?.classList.toggle('active', aba === 'login');
+            registerTab?.classList.toggle('active', aba === 'register');
+
+            if(erro) {
+                erro.textContent = '';
+                erro.style.display = 'none';
+            }
         }
 
         function installControlRegisterOption() {
@@ -1427,7 +1438,7 @@ window.toggleSidebarJogador = function(numSlot) {
             usuarioAtual = montarUsuarioAtual(firebaseUser, profile);
             document.getElementById('tela-login').style.display = "none";
             document.getElementById('tela-app').style.display = "block";
-            document.getElementById('usuario-logado').innerText = usuarioAtual.label;
+            document.getElementById('usuario-logado').innerText = usuarioAtual.username || usuarioAtual.label;
             document.getElementById('badge-cargo').innerText = usuarioAtual.cargo;
             document.body.classList.toggle('is-mestre', usuarioAtual.cargo === "Mestre");
             document.body.classList.toggle('is-jogador', usuarioAtual.cargo === "Jogador");
@@ -1512,12 +1523,17 @@ window.toggleSidebarJogador = function(numSlot) {
         onAuthStateChanged(auth, async (firebaseUser) => {
             if(!firebaseUser) {
                 usuarioAtual = null;
-                document.getElementById('tela-login').style.display = 'flex';
+                const telaLogin = document.getElementById('tela-login');
+                if(telaLogin) {
+                    telaLogin.style.display = '';
+                    telaLogin.classList.add('auth-card');
+                }
                 document.getElementById('tela-app').style.display = 'none';
                 document.getElementById('sidebar-mestre').style.display = 'none';
                 document.getElementById('tela-control').style.display = 'none';
                 document.getElementById('hud-mestre').style.display = 'none';
                 document.getElementById('btn-toggle-hud').style.display = 'none';
+                window.mostrarAbaAuth?.('login');
                 document.body.classList.remove('is-mestre', 'is-jogador');
                 return;
             }
