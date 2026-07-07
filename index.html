@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mesa do Mestre — RPG Medieval Dark</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Cinzel:wght@400;500;600;700&family=IM+Fell+English+SC&family=Uncial+Antiqua&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body style="--brilho-xp-escala: 1;">
+
+    <div id="modal-exp" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2000; justify-content: center; align-items: center; backdrop-filter: blur(5px);">
+        <div style="background: #1c130d; border: 3px double #d4af37; padding: 25px; border-radius: 8px; width: 300px; box-shadow: 0 0 30px #000, inset 0 0 20px rgba(0,0,0,0.8); text-align: center;">
+            <h3 style="color:#d4af37; margin-top:0; border-bottom: 1px dashed #5c3a21; padding-bottom: 10px;">✨ Distribuir EXP</h3>
+            <div style="text-align: left; margin: 15px 0; display: flex; flex-direction: column; gap: 8px;" id="modal-exp-checkboxes">
+                <label class="checkbox-alvo"><input type="checkbox" class="exp-target" value="lais"> Lais</label>
+                <label class="checkbox-alvo"><input type="checkbox" class="exp-target" value="gomes"> Gomes</label>
+                <label class="checkbox-alvo"><input type="checkbox" class="exp-target" value="kamy"> Kamy</label>
+                <label class="checkbox-alvo"><input type="checkbox" class="exp-target" value="arthur"> Arthur</label>
+            </div>
+            <input type="number" id="exp-amount-input" placeholder="Qtd. de Experiência (+ ou -)" style="margin-bottom: 15px;">
+            <div style="display: flex; gap: 10px;">
+                <button onclick="aplicarExpLote()" style="flex: 1; background: linear-gradient(to bottom, #d4af37, #8b6d43); color: #000;">Aplicar</button>
+                <button onclick="fecharModalExp()" style="flex: 1; border-color: #8c1c13; color: #d95757;">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <button id="btn-toggle-hud" onclick="toggleHudMestre()">👁️ Grupo</button>
+    <div id="hud-mestre">
+        <div style="color: #8b6d43; text-align: center; font-size: 10px; font-weight: bold; border-bottom: 1px solid #3a2212; padding-bottom: 8px; margin-bottom: 5px; letter-spacing: 2px;">STATUS DO GRUPO</div>
+        <div id="hud-players-list"></div>
+    </div>
+
+    <div id="tela-login">
+        <!-- Ornamentos dos cantos -->
+        <div style="position:absolute;top:8px;right:8px;width:50px;height:50px;border-top:2px solid #8b6d43;border-right:2px solid #8b6d43;pointer-events:none;"></div>
+        <div style="position:absolute;bottom:8px;left:8px;width:50px;height:50px;border-bottom:2px solid #8b6d43;border-left:2px solid #8b6d43;pointer-events:none;"></div>
+        <!-- Partículas de brasa -->
+        <span class="brasa" style="left:15%;--duracao:3.2s;--atraso:0s;--desvio:8px;--desvio2:-5px;"></span>
+        <span class="brasa" style="left:30%;--duracao:2.8s;--atraso:0.7s;--desvio:-12px;--desvio2:6px;width:3px;height:3px;"></span>
+        <span class="brasa" style="left:50%;--duracao:3.6s;--atraso:1.4s;--desvio:5px;--desvio2:-8px;"></span>
+        <span class="brasa" style="left:68%;--duracao:2.5s;--atraso:0.3s;--desvio:-7px;--desvio2:10px;width:3px;height:3px;"></span>
+        <span class="brasa" style="left:82%;--duracao:3.9s;--atraso:1.1s;--desvio:11px;--desvio2:-4px;"></span>
+        <span class="brasa" style="left:42%;--duracao:4.1s;--atraso:1.8s;--desvio:-9px;--desvio2:7px;width:2px;height:2px;"></span>
+        <h2 id="login-title">O Pacto</h2>
+        <p id="login-subtitle">"Assine com seu sangue ou tinta, viajante, para adentrar os reinos esquecidos..."</p>
+        <input type="text" id="input-senha" placeholder="Sua Assinatura..." autocomplete="off">
+        <button id="btn-login-wax" onclick="fazerLogin()">Assinar &amp; Adentrar</button>
+        <p id="msg-erro" style="color: #8c1c13; font-size: 14px; margin-top: 20px; display: none; font-weight: bold; text-shadow: none;">Assinatura não reconhecida pelo Pacto.</p>
+    </div>
+
+    <!-- SIDEBAR DO MESTRE (ACERVO) -->
+    <div id="sidebar-mestre" class="sidebar-mestre" style="display: none;">
+        <button id="btn-toggle-sidebar" onclick="toggleSidebarMestre()">
+            <span id="seta-sidebar">▶</span>
+        </button>
+        <div class="sidebar-header">
+            <h3>📖 BESTIÁRIO</h3>
+            <button onclick="invocarMonstro()" class="btn-add-sidebar">+ NOVO</button>
+        </div>
+        <div class="sidebar-content">
+            <div class="acervo-categoria">
+                <button class="btn-categoria" onclick="toggleCategoria('cat-jogadores')">👤 Jogadores <span class="seta">▼</span></button>
+                <div id="cat-jogadores" class="categoria-lista" style="display: block;"></div>
+            </div>
+            <div class="acervo-categoria">
+                <button class="btn-categoria" onclick="toggleCategoria('cat-monstros')">💀 Monstros <span class="seta">▼</span></button>
+                <div id="cat-monstros" class="categoria-lista" style="display: block;"></div>
+            </div>
+            <div class="acervo-categoria">
+                <button class="btn-categoria" onclick="toggleCategoria('cat-hordas')">🛡️ Hordas <span class="seta">▼</span></button>
+                <div id="cat-hordas" class="categoria-lista" style="display: block;"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="tela-app">
+        <div class="nav-bar">
+            <div class="nav-info">
+                Identidade: <strong id="usuario-logado" style="color: #d4af37; font-size: 16px;"></strong> 
+                <span id="badge-cargo" style="background: #0a0503; padding: 3px 10px; border: 1px solid #5c3a21; font-size: 10px; margin-left: 8px; vertical-align: middle;"></span>
+            </div>
+            
+            <div style="display: flex; gap: 20px; align-items: center; flex-wrap: wrap;">
+                
+                <div id="seletor-jogador" style="display: none;">
+                    <label style="display: inline-block; margin-bottom: 0;">Seu Personagem:</label>
+                    <span id="nome-heroi-jogador" style="font-weight:bold; color:#d4af37; margin-left: 5px; font-size: 16px; text-transform: uppercase;">Aguardando...</span>
+                </div>
+
+                <div id="painel-mestre" class="painel-mestre">
+                    <button class="btn-exp-master" onclick="abrirModalExp()">✨ Distribuir EXP</button>
+                    <button class="btn-turno-global" onclick="avancarTurnoGlobal()" style="margin-left:15px; background: linear-gradient(to bottom, #1e5c2e, #11361a); border-color: #27ae60; color: #fff; text-shadow: 1px 1px 2px black;">⏳ Passar Turno Global</button>
+                    <button class="btn-fechar-telas" onclick="mestreLimpar(1)" style="margin-left: 15px; background: rgba(0,0,0,0.5); border: 1px solid #8c1c13; color: #d95757; padding: 5px 10px; cursor: pointer;">❌ Ficha Esq.</button>
+                    <button class="btn-fechar-telas" onclick="mestreLimpar(2)" style="margin-left: 5px; background: rgba(0,0,0,0.5); border: 1px solid #8c1c13; color: #d95757; padding: 5px 10px; cursor: pointer;">❌ Ficha Dir.</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="mesa-de-jogo">
+            <div id="slot-1" class="slot-container" style="display: none;"></div>
+            <div id="slot-2" class="slot-container" style="display: none;"></div>
+        </div>
+    </div>
+
+    <!-- MODAL GRIMÓRIO VISUAL -->
+    <div id="modal-grimorio">
+        <div class="grimorio-book-container">
+            <button class="btn-fechar-grimorio" onclick="fecharGrimorio()">✖</button>
+            <div class="grimorio-header">
+                <h2 class="grimorio-titulo">GRIMÓRIO</h2>
+                <div id="grimorio-meta-arvore" class="grimorio-meta-arvore">Classe: - · Caminho: -</div>
+            </div>
+            <div class="grimorio-book-pages">
+                <!-- PÁGINA ESQUERDA: ATIVAS -->
+                <div class="grimorio-page page-left">
+                    <h3 class="page-title">HABILIDADES ATIVAS</h3>
+                    <div class="grimorio-list" id="grimorio-lista-ativas">
+                        <!-- Injetado dinamicamente -->
+                    </div>
+                </div>
+                <!-- PÁGINA DIREITA: PASSIVAS -->
+                <div class="grimorio-page page-right">
+                    <h3 class="page-title">HABILIDADES PASSIVAS</h3>
+                    <div class="grimorio-list" id="grimorio-lista-passivas">
+                        <!-- Injetado dinamicamente -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL ÁRVORE DE HABILIDADES -->
+    <div id="modal-arvore">
+        <div class="arvore-container">
+            <button class="btn-fechar-arvore" onclick="fecharArvore()">✖ FECHAR</button>
+            <div class="arvore-header">
+                <h2 class="arvore-titulo">Árvore de Habilidades</h2>
+                <div class="arvore-classes-tabs" id="arvore-tabs-container">
+                    <!-- As abas das classes serão injetadas via script -->
+                </div>
+            </div>
+            <div class="arvore-content" id="arvore-views-container">
+                <!-- As visões das árvores serão injetadas via script -->
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="script.js"></script>
+</body>
+</html>
+
+
+
