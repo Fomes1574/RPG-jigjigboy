@@ -1,16 +1,17 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
         import { getDatabase, ref, onValue, update, get, remove, runTransaction } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 
-        const DB_PREFIX = "";
+                const DB_PREFIX = "demo";
 
         const firebaseConfig = {
-            apiKey: "AIzaSyBOJ4nPQX6dUjrpODKQfCB6uTfWSQCS9uA",
-            authDomain: "rpg-do-fomes.firebaseapp.com",
-            databaseURL: "https://rpg-do-fomes-default-rtdb.firebaseio.com",
-            projectId: "rpg-do-fomes",
-            storageBucket: "rpg-do-fomes.firebasestorage.app",
-            messagingSenderId: "344602303770",
-            appId: "1:344602303770:web:1d6e961606df1a8df5a0a3"
+            apiKey: "AIzaSyCDiJFZu5sqJFZmOBUOKkAEkIQ3FaDfI50",
+            authDomain: "rpg-jigjigboy.firebaseapp.com",
+            databaseURL: "https://rpg-jigjigboy-default-rtdb.firebaseio.com",
+            projectId: "rpg-jigjigboy",
+            storageBucket: "rpg-jigjigboy.firebasestorage.app",
+            messagingSenderId: "844654913902",
+            appId: "1:844654913902:web:9bdf7d4cf3a26084cf797f",
+            measurementId: "G-LSBGT1Q317"
         };
 
         const app = initializeApp(firebaseConfig);
