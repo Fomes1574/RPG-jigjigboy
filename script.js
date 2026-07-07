@@ -82,6 +82,9 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebas
         }
 
         function montarUsuarioAtual(firebaseUser, profile) {
+            if(profile.role === 'control') {
+                return { uid: firebaseUser.uid, username: profile.username, role: 'control', cargo: 'Control', idFicha: null, fichaId: null, label: 'Control' };
+            }
             if(profile.role === 'master') {
                 return { uid: firebaseUser.uid, username: profile.username, role: 'master', cargo: 'Mestre', idFicha: null, fichaId: null, label: 'Mestre' };
             }
@@ -1301,7 +1304,126 @@ window.toggleSidebarJogador = function(numSlot) {
             if(erro) erro.style.display = 'none';
         }
 
+        function installControlRegisterOption() {
+            const input = document.getElementById('input-cadastro-usuario');
+            const select = document.getElementById('select-cadastro-vinculo');
+            if(!input || !select) return;
+            const sync = () => {
+                let option = select.querySelector('option[value="control"]');
+                if(input.value === 'Control') {
+                    if(!option) {
+                        option = document.createElement('option');
+                        option.value = 'control';
+                        option.textContent = 'Control';
+                        select.appendChild(option);
+                    }
+                    select.value = 'control';
+                } else if(option) {
+                    if(select.value === 'control') select.value = 'ficha1';
+                    option.remove();
+                }
+            };
+            input.addEventListener('input', sync);
+            sync();
+        }
+
+        function esconderTelasDoJogoParaControl() {
+            document.getElementById('tela-login').style.display = 'none';
+            document.getElementById('tela-app').style.display = 'none';
+            document.getElementById('sidebar-mestre').style.display = 'none';
+            document.getElementById('hud-mestre').style.display = 'none';
+            document.getElementById('btn-toggle-hud').style.display = 'none';
+            document.body.classList.remove('is-mestre', 'is-jogador');
+        }
+
+        async function getFichaStatus(slotId) {
+            const [fichaSnap, fotoSnap, lockSnap] = await Promise.all([
+                safeGet(`fichas/${slotId}`),
+                safeGet(`fotos/${slotId}`),
+                safeGet(`fichaLocks/${slotId}`)
+            ]);
+            const ficha = fichaSnap.val() || {};
+            const lock = lockSnap.val() || null;
+            let username = lock?.usernameKey || '';
+            if(lock?.ownerUid) {
+                const profileSnap = await safeGet(`authProfiles/${lock.ownerUid}`);
+                username = profileSnap.val()?.username || username;
+            }
+            return {
+                id: slotId,
+                label: getSlotLabel(slotId),
+                ocupado: Boolean(lock?.ownerUid),
+                nomePersonagem: ficha.nome || '',
+                username,
+                temFoto: fotoSnap.exists(),
+                ownerUid: lock?.ownerUid || '',
+                usernameKey: lock?.usernameKey || ''
+            };
+        }
+
+        function mostrarMensagemControl(msg) {
+            const el = document.getElementById('control-message');
+            if(!el) return;
+            el.textContent = msg;
+            el.style.display = 'block';
+        }
+
+        window.renderControlSlots = async function() {
+            const container = document.getElementById('control-slots');
+            if(!container) return;
+            container.innerHTML = '<div style="color:#d4af37;">Carregando fichas...</div>';
+            const statuses = await Promise.all(CHARACTER_SLOTS.map(slot => getFichaStatus(slot.id)));
+            container.innerHTML = statuses.map(status => `
+                <div style="border:2px solid #5c3a21; background:rgba(0,0,0,0.45); padding:18px; min-height:230px; box-shadow:inset 0 0 18px rgba(0,0,0,0.65);">
+                    <h2 style="font-family:'Cinzel', serif; color:#d4af37; margin:0 0 12px;">${escapeHtml(status.label)}</h2>
+                    <p><strong>Estado:</strong> <span style="color:${status.ocupado ? '#d95757' : '#27ae60'};">${status.ocupado ? 'Ocupada' : 'Livre'}</span></p>
+                    <p><strong>Personagem:</strong> ${escapeHtml(status.nomePersonagem || 'Sem personagem')}</p>
+                    <p><strong>Usuário vinculado:</strong> ${escapeHtml(status.username || 'Nenhum')}</p>
+                    <p><strong>Foto salva:</strong> ${status.temFoto ? 'Sim' : 'Não'}</p>
+                    <button onclick="resetFichaControl('${status.id}')" style="width:100%; margin-top:14px; background:linear-gradient(to bottom,#8c1c13,#4a1111); border:1px solid #d95757; color:#fff; padding:12px; cursor:pointer; font-weight:bold;">Apagar dados e liberar ${escapeHtml(status.label)}</button>
+                </div>
+            `).join('');
+        }
+
+        window.resetFichaControl = async function(slotId) {
+            if(usuarioAtual?.role !== 'control') return;
+            const slot = CHARACTER_SLOTS.find(s => s.id === slotId);
+            if(!slot) return;
+            const confirmacao = prompt('Digite APAGAR para confirmar.');
+            if(confirmacao !== 'APAGAR') return;
+            const lockSnap = await safeGet(`fichaLocks/${slotId}`);
+            const lock = lockSnap.val() || {};
+            await safeRemove(`fichas/${slotId}`);
+            await safeRemove(`fotos/${slotId}`);
+            await safeRemove(`fichaLocks/${slotId}`);
+            if(lock.ownerUid) await safeRemove(`authProfiles/${lock.ownerUid}`);
+            if(lock.usernameKey) await safeRemove(`usernames/${lock.usernameKey}`);
+            const combateSnap = await safeGet('estado_combate/ativo');
+            if(combateSnap.val() === slotId) {
+                await safeRemove('estado_combate/ativo');
+                await safeRemove('estado_combate/ultimo_evento');
+            }
+            await window.renderControlSlots();
+            mostrarMensagemControl(`${slot.label} foi zerada e liberada.`);
+        }
+
+        async function renderControlPanel(firebaseUser, profile) {
+            usuarioAtual = montarUsuarioAtual(firebaseUser, profile);
+            esconderTelasDoJogoParaControl();
+            document.getElementById('tela-control').style.display = 'block';
+            await window.renderControlSlots();
+        }
+
+        async function handleControlSession(firebaseUser, profile) {
+            await renderControlPanel(firebaseUser, profile);
+        }
+
         async function aplicarSessao(firebaseUser, profile) {
+            if(profile.role === 'control') {
+                await handleControlSession(firebaseUser, profile);
+                return;
+            }
+            document.getElementById('tela-control').style.display = 'none';
             usuarioAtual = montarUsuarioAtual(firebaseUser, profile);
             document.getElementById('tela-login').style.display = "none";
             document.getElementById('tela-app').style.display = "block";
@@ -1337,25 +1459,32 @@ window.toggleSidebarJogador = function(numSlot) {
             const senha = document.getElementById('input-cadastro-senha').value;
             const confirmar = document.getElementById('input-cadastro-confirmar').value;
             const vinculo = document.getElementById('select-cadastro-vinculo').value;
-            if(usernameKey.length < 3) return mostrarErroAuth('Usuário deve ter ao menos 3 caracteres válidos.');
+            if(vinculo === 'control' && username !== 'Control') return mostrarErroAuth('Acesso Control indisponível.');
+            const effectiveUsername = vinculo === 'control' ? 'Control' : username;
+            const effectiveUsernameKey = vinculo === 'control' ? 'control' : usernameKey;
+            if(effectiveUsernameKey.length < 3) return mostrarErroAuth('Usuário deve ter ao menos 3 caracteres válidos.');
             if(senha.length < 6) return mostrarErroAuth('Senha deve ter ao menos 6 caracteres.');
             if(senha !== confirmar) return mostrarErroAuth('Confirmação de senha não confere.');
-            if((await safeGet(`usernames/${usernameKey}`)).exists()) return mostrarErroAuth('Usuário já existe.');
+            if((await safeGet(`usernames/${effectiveUsernameKey}`)).exists()) return mostrarErroAuth('Usuário já existe.');
             if(vinculo === 'master' && (await safeGet('master/uid')).exists()) return mostrarErroAuth('Mestre já configurado.');
+            if(vinculo === 'control' && (await safeGet('control/uid')).exists()) return mostrarErroAuth('Control já configurado.');
             let cred;
             try {
-                cred = await createUserWithEmailAndPassword(auth, internalEmail(usernameKey), senha);
+                cred = await createUserWithEmailAndPassword(auth, internalEmail(effectiveUsernameKey), senha);
                 const now = Date.now();
-                const profile = { username, usernameKey, role: vinculo === 'master' ? 'master' : 'player', fichaId: vinculo === 'master' ? null : vinculo, createdAt: now, updatedAt: now };
-                if(vinculo !== 'master') {
-                    const lock = await safeTransaction(`fichaLocks/${vinculo}`, atual => atual?.ownerUid ? atual : { ownerUid: cred.user.uid, usernameKey, lockedAt: now });
+                const role = vinculo === 'control' ? 'control' : (vinculo === 'master' ? 'master' : 'player');
+                const profile = { username: effectiveUsername, usernameKey: effectiveUsernameKey, role, cargo: role === 'control' ? 'Control' : (role === 'master' ? 'Mestre' : 'Jogador'), fichaId: role === 'player' ? vinculo : null, createdAt: now, updatedAt: now };
+                if(role === 'player') {
+                    const lock = await safeTransaction(`fichaLocks/${vinculo}`, atual => atual?.ownerUid ? atual : { ownerUid: cred.user.uid, usernameKey: effectiveUsernameKey, lockedAt: now });
                     if(lock.snapshot.val()?.ownerUid !== cred.user.uid) { await signOut(auth); return mostrarErroAuth('Essa ficha já possui dono.'); }
                     if(!(await safeGet(`fichas/${vinculo}`)).exists()) await safeUpdate(`fichas/${vinculo}`, FICHA_INICIAL);
-                } else {
-                    await safeUpdate('master', { uid: cred.user.uid, usernameKey, createdAt: now });
+                } else if(role === 'master') {
+                    await safeUpdate('master', { uid: cred.user.uid, usernameKey: effectiveUsernameKey, createdAt: now });
+                } else if(role === 'control') {
+                    await safeUpdate('control', { uid: cred.user.uid, usernameKey: 'control', createdAt: now });
                 }
                 await safeUpdate(`authProfiles/${cred.user.uid}`, profile);
-                await safeUpdate(`usernames/${usernameKey}`, { uid: cred.user.uid });
+                await safeUpdate(`usernames/${effectiveUsernameKey}`, { uid: cred.user.uid });
                 await aplicarSessao(cred.user, profile);
             } catch(e) {
                 mostrarErroAuth(e?.code === 'auth/email-already-in-use' ? 'Usuário já existe.' : 'Não foi possível criar o acesso.');
@@ -1378,12 +1507,17 @@ window.toggleSidebarJogador = function(numSlot) {
 
         window.sair = async function() { await signOut(auth); }
 
+        installControlRegisterOption();
+
         onAuthStateChanged(auth, async (firebaseUser) => {
             if(!firebaseUser) {
                 usuarioAtual = null;
                 document.getElementById('tela-login').style.display = 'flex';
                 document.getElementById('tela-app').style.display = 'none';
                 document.getElementById('sidebar-mestre').style.display = 'none';
+                document.getElementById('tela-control').style.display = 'none';
+                document.getElementById('hud-mestre').style.display = 'none';
+                document.getElementById('btn-toggle-hud').style.display = 'none';
                 document.body.classList.remove('is-mestre', 'is-jogador');
                 return;
             }

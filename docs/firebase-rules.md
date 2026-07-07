@@ -13,22 +13,22 @@ Estas regras assumem que todos os dados do jogo ficam dentro do prefixo `demo`.
 
       "authProfiles": {
         "$uid": {
-          ".read": "auth != null && (auth.uid === $uid || root.child('demo/authProfiles/' + auth.uid + '/role').val() === 'master')",
-          ".write": "auth != null && auth.uid === $uid && (!data.exists() || data.child('role').val() === newData.child('role').val())"
+          ".read": "auth != null && (auth.uid === $uid || root.child('demo/authProfiles/' + auth.uid + '/role').val() === 'master' || root.child('demo/authProfiles/' + auth.uid + '/role').val() === 'control')",
+          ".write": "auth != null && ((auth.uid === $uid && (!data.exists() || data.child('role').val() === newData.child('role').val())) || root.child('demo/authProfiles/' + auth.uid + '/role').val() === 'control')"
         }
       },
 
       "usernames": {
         "$usernameKey": {
           ".read": "auth != null",
-          ".write": "auth != null && !data.exists() && newData.child('uid').val() === auth.uid"
+          ".write": "auth != null && ((!data.exists() && newData.child('uid').val() === auth.uid) || root.child('demo/authProfiles/' + auth.uid + '/role').val() === 'control')"
         }
       },
 
       "fichaLocks": {
         "$fichaId": {
           ".read": "auth != null",
-          ".write": "auth != null && (!data.exists() || root.child('demo/authProfiles/' + auth.uid + '/role').val() === 'master')"
+          ".write": "auth != null && (!data.exists() || root.child('demo/authProfiles/' + auth.uid + '/role').val() === 'master' || root.child('demo/authProfiles/' + auth.uid + '/role').val() === 'control')"
         }
       },
 
@@ -37,17 +37,22 @@ Estas regras assumem que todos os dados do jogo ficam dentro do prefixo `demo`.
         ".write": "auth != null && (!data.exists() || root.child('demo/authProfiles/' + auth.uid + '/role').val() === 'master')"
       },
 
+      "control": {
+        ".read": "auth != null && root.child('demo/authProfiles/' + auth.uid + '/role').val() === 'control'",
+        ".write": "auth != null && (!data.exists() || root.child('demo/authProfiles/' + auth.uid + '/role').val() === 'control')"
+      },
+
       "fichas": {
         "$fichaId": {
-          ".read": "auth != null && (root.child('demo/authProfiles/' + auth.uid + '/role').val() === 'master' || root.child('demo/authProfiles/' + auth.uid + '/fichaId').val() === $fichaId)",
-          ".write": "auth != null && (root.child('demo/authProfiles/' + auth.uid + '/role').val() === 'master' || root.child('demo/authProfiles/' + auth.uid + '/fichaId').val() === $fichaId)"
+          ".read": "auth != null && (root.child('demo/authProfiles/' + auth.uid + '/role').val() === 'master' || root.child('demo/authProfiles/' + auth.uid + '/role').val() === 'control' || root.child('demo/authProfiles/' + auth.uid + '/fichaId').val() === $fichaId)",
+          ".write": "auth != null && (root.child('demo/authProfiles/' + auth.uid + '/role').val() === 'master' || root.child('demo/authProfiles/' + auth.uid + '/role').val() === 'control' || root.child('demo/authProfiles/' + auth.uid + '/fichaId').val() === $fichaId)"
         }
       },
 
       "fotos": {
         "$fichaId": {
-          ".read": "auth != null && (root.child('demo/authProfiles/' + auth.uid + '/role').val() === 'master' || root.child('demo/authProfiles/' + auth.uid + '/fichaId').val() === $fichaId)",
-          ".write": "auth != null && (root.child('demo/authProfiles/' + auth.uid + '/role').val() === 'master' || root.child('demo/authProfiles/' + auth.uid + '/fichaId').val() === $fichaId)"
+          ".read": "auth != null && (root.child('demo/authProfiles/' + auth.uid + '/role').val() === 'master' || root.child('demo/authProfiles/' + auth.uid + '/role').val() === 'control' || root.child('demo/authProfiles/' + auth.uid + '/fichaId').val() === $fichaId)",
+          ".write": "auth != null && (root.child('demo/authProfiles/' + auth.uid + '/role').val() === 'master' || root.child('demo/authProfiles/' + auth.uid + '/role').val() === 'control' || root.child('demo/authProfiles/' + auth.uid + '/fichaId').val() === $fichaId)"
         }
       },
 
