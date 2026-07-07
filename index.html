@@ -8,6 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Cinzel:wght@400;500;600;700&family=IM+Fell+English+SC&family=Uncial+Antiqua&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="auth-fix.css">
 </head>
 <body style="--brilho-xp-escala: 1;">
 
@@ -15,10 +16,7 @@
         <div style="background: #1c130d; border: 3px double #d4af37; padding: 25px; border-radius: 8px; width: 300px; box-shadow: 0 0 30px #000, inset 0 0 20px rgba(0,0,0,0.8); text-align: center;">
             <h3 style="color:#d4af37; margin-top:0; border-bottom: 1px dashed #5c3a21; padding-bottom: 10px;">✨ Distribuir EXP</h3>
             <div style="text-align: left; margin: 15px 0; display: flex; flex-direction: column; gap: 8px;" id="modal-exp-checkboxes">
-                <label class="checkbox-alvo"><input type="checkbox" class="exp-target" value="lais"> Lais</label>
-                <label class="checkbox-alvo"><input type="checkbox" class="exp-target" value="gomes"> Gomes</label>
-                <label class="checkbox-alvo"><input type="checkbox" class="exp-target" value="kamy"> Kamy</label>
-                <label class="checkbox-alvo"><input type="checkbox" class="exp-target" value="arthur"> Arthur</label>
+
             </div>
             <input type="number" id="exp-amount-input" placeholder="Qtd. de Experiência (+ ou -)" style="margin-bottom: 15px;">
             <div style="display: flex; gap: 10px;">
@@ -34,22 +32,57 @@
         <div id="hud-players-list"></div>
     </div>
 
-    <div id="tela-login">
-        <!-- Ornamentos dos cantos -->
-        <div style="position:absolute;top:8px;right:8px;width:50px;height:50px;border-top:2px solid #8b6d43;border-right:2px solid #8b6d43;pointer-events:none;"></div>
-        <div style="position:absolute;bottom:8px;left:8px;width:50px;height:50px;border-bottom:2px solid #8b6d43;border-left:2px solid #8b6d43;pointer-events:none;"></div>
-        <!-- Partículas de brasa -->
-        <span class="brasa" style="left:15%;--duracao:3.2s;--atraso:0s;--desvio:8px;--desvio2:-5px;"></span>
-        <span class="brasa" style="left:30%;--duracao:2.8s;--atraso:0.7s;--desvio:-12px;--desvio2:6px;width:3px;height:3px;"></span>
-        <span class="brasa" style="left:50%;--duracao:3.6s;--atraso:1.4s;--desvio:5px;--desvio2:-8px;"></span>
-        <span class="brasa" style="left:68%;--duracao:2.5s;--atraso:0.3s;--desvio:-7px;--desvio2:10px;width:3px;height:3px;"></span>
-        <span class="brasa" style="left:82%;--duracao:3.9s;--atraso:1.1s;--desvio:11px;--desvio2:-4px;"></span>
-        <span class="brasa" style="left:42%;--duracao:4.1s;--atraso:1.8s;--desvio:-9px;--desvio2:7px;width:2px;height:2px;"></span>
-        <h2 id="login-title">O Pacto</h2>
-        <p id="login-subtitle">"Assine com seu sangue ou tinta, viajante, para adentrar os reinos esquecidos..."</p>
-        <input type="text" id="input-senha" placeholder="Sua Assinatura..." autocomplete="off">
-        <button id="btn-login-wax" onclick="fazerLogin()">Assinar &amp; Adentrar</button>
-        <p id="msg-erro" style="color: #8c1c13; font-size: 14px; margin-top: 20px; display: none; font-weight: bold; text-shadow: none;">Assinatura não reconhecida pelo Pacto.</p>
+    <div id="tela-login" class="auth-card">
+        <div class="auth-corner auth-corner-top"></div>
+        <div class="auth-corner auth-corner-bottom"></div>
+
+        <h2 id="login-title">Entrada da Mesa</h2>
+
+        <div class="auth-tabs">
+            <button type="button" id="tab-login" class="auth-tab active" onclick="mostrarAbaAuth('login')">Entrar</button>
+            <button type="button" id="tab-register" class="auth-tab" onclick="mostrarAbaAuth('register')">Criar acesso</button>
+        </div>
+
+        <div id="auth-login-panel" class="auth-panel">
+            <input type="text" id="input-usuario" placeholder="Usuário" autocomplete="username">
+            <input type="password" id="input-senha" placeholder="Senha" autocomplete="current-password">
+            <button id="btn-login-wax" type="button" onclick="fazerLogin()">Entrar</button>
+        </div>
+
+        <div id="auth-register-panel" class="auth-panel" style="display:none;">
+            <input type="text" id="input-cadastro-usuario" placeholder="Usuário" autocomplete="username">
+            <input type="password" id="input-cadastro-senha" placeholder="Senha" autocomplete="new-password">
+            <input type="password" id="input-cadastro-confirmar" placeholder="Confirmar senha" autocomplete="new-password">
+            <select id="select-cadastro-vinculo">
+                <option value="ficha1">Ficha 1</option>
+                <option value="ficha2">Ficha 2</option>
+                <option value="ficha3">Ficha 3</option>
+                <option value="ficha4">Ficha 4</option>
+                <option value="master">Mestre</option>
+            </select>
+            <button type="button" onclick="criarAcesso()">Criar acesso</button>
+        </div>
+
+        <p id="msg-erro"></p>
+    </div>
+
+
+    <div id="tela-control" style="display:none; min-height:100vh; padding:32px; background: radial-gradient(circle at top, rgba(92,58,33,0.35), rgba(10,5,3,0.96)); color:#dcd0ba; box-sizing:border-box;">
+        <div style="max-width:1100px; margin:0 auto; border:3px double #8b6d43; background:rgba(20,10,5,0.92); padding:26px; box-shadow:0 0 35px #000;">
+            <div style="display:flex; justify-content:space-between; gap:16px; align-items:center; flex-wrap:wrap; border-bottom:1px dashed #5c3a21; padding-bottom:16px; margin-bottom:18px;">
+                <div>
+                    <h1 style="font-family:'Cinzel Decorative', serif; color:#d4af37; margin:0 0 8px;">Control</h1>
+                    <p style="margin:0; color:#b89c72;">Acesso especial para limpar fichas e liberar novos jogadores.</p>
+                </div>
+                <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                    <button onclick="renderControlSlots()" style="background:linear-gradient(to bottom,#3a2212,#1c130d); border:1px solid #8b6d43; color:#d4af37; padding:10px 14px; cursor:pointer;">Atualizar lista</button>
+                    <button onclick="sair()" style="background:linear-gradient(to bottom,#5c1818,#250808); border:1px solid #d95757; color:#fff; padding:10px 14px; cursor:pointer;">Sair</button>
+                </div>
+            </div>
+            <p style="border:1px solid #8b6d43; background:rgba(0,0,0,0.35); padding:12px; color:#d4af37; line-height:1.5;">Este painel apaga os dados do app e libera a ficha. A conta pode continuar aparecendo no Firebase Authentication. Ela não acessará o app sem perfil. Para reutilizar exatamente o mesmo nome de usuário, apague também o e-mail interno em Authentication.</p>
+            <div id="control-message" style="display:none; margin:14px 0; padding:10px; border:1px solid #27ae60; color:#9be0ad; background:rgba(17,54,26,0.35);"></div>
+            <div id="control-slots" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:18px; margin-top:20px;"></div>
+        </div>
     </div>
 
     <!-- SIDEBAR DO MESTRE (ACERVO) -->
@@ -63,7 +96,7 @@
         </div>
         <div class="sidebar-content">
             <div class="acervo-categoria">
-                <button class="btn-categoria" onclick="toggleCategoria('cat-jogadores')">👤 Jogadores <span class="seta">▼</span></button>
+                <button class="btn-categoria" onclick="toggleCategoria('cat-jogadores')">📜 Fichas <span class="seta">▼</span></button>
                 <div id="cat-jogadores" class="categoria-lista" style="display: block;"></div>
             </div>
             <div class="acervo-categoria">
@@ -80,29 +113,34 @@
     <div id="tela-app">
         <div class="nav-bar">
             <div class="nav-info">
-                Identidade: <strong id="usuario-logado" style="color: #d4af37; font-size: 16px;"></strong> 
+                Acesso: <strong id="usuario-logado" style="color: #d4af37; font-size: 16px;"></strong>
                 <span id="badge-cargo" style="background: #0a0503; padding: 3px 10px; border: 1px solid #5c3a21; font-size: 10px; margin-left: 8px; vertical-align: middle;"></span>
+                <button onclick="sair()" style="margin-left: 12px; padding: 4px 10px;">Sair</button>
             </div>
-            
+
             <div style="display: flex; gap: 20px; align-items: center; flex-wrap: wrap;">
-                
+
                 <div id="seletor-jogador" style="display: none;">
-                    <label style="display: inline-block; margin-bottom: 0;">Seu Personagem:</label>
+                    <label style="display: inline-block; margin-bottom: 0;">Sua Ficha:</label>
                     <span id="nome-heroi-jogador" style="font-weight:bold; color:#d4af37; margin-left: 5px; font-size: 16px; text-transform: uppercase;">Aguardando...</span>
                 </div>
 
                 <div id="painel-mestre" class="painel-mestre">
                     <button class="btn-exp-master" onclick="abrirModalExp()">✨ Distribuir EXP</button>
                     <button class="btn-turno-global" onclick="avancarTurnoGlobal()" style="margin-left:15px; background: linear-gradient(to bottom, #1e5c2e, #11361a); border-color: #27ae60; color: #fff; text-shadow: 1px 1px 2px black;">⏳ Passar Turno Global</button>
-                    <button class="btn-fechar-telas" onclick="mestreLimpar(1)" style="margin-left: 15px; background: rgba(0,0,0,0.5); border: 1px solid #8c1c13; color: #d95757; padding: 5px 10px; cursor: pointer;">❌ Ficha Esq.</button>
-                    <button class="btn-fechar-telas" onclick="mestreLimpar(2)" style="margin-left: 5px; background: rgba(0,0,0,0.5); border: 1px solid #8c1c13; color: #d95757; padding: 5px 10px; cursor: pointer;">❌ Ficha Dir.</button>
+                    <button class="btn-fechar-telas" onclick="mestreLimpar(1)" style="margin-left: 15px; background: rgba(0,0,0,0.5); border: 1px solid #8c1c13; color: #d95757; padding: 5px 10px; cursor: pointer;">❌ Slot 1</button>
+                    <button class="btn-fechar-telas" onclick="mestreLimpar(2)" style="margin-left: 5px; background: rgba(0,0,0,0.5); border: 1px solid #8c1c13; color: #d95757; padding: 5px 10px; cursor: pointer;">❌ Slot 2</button>
+                    <button class="btn-fechar-telas" onclick="mestreLimpar(3)" style="margin-left: 5px; background: rgba(0,0,0,0.5); border: 1px solid #8c1c13; color: #d95757; padding: 5px 10px; cursor: pointer;">❌ Slot 3</button>
+                    <button class="btn-fechar-telas" onclick="mestreLimpar(4)" style="margin-left: 5px; background: rgba(0,0,0,0.5); border: 1px solid #8c1c13; color: #d95757; padding: 5px 10px; cursor: pointer;">❌ Slot 4</button>
                 </div>
             </div>
         </div>
 
         <div class="mesa-de-jogo">
-            <div id="slot-1" class="slot-container" style="display: none;"></div>
-            <div id="slot-2" class="slot-container" style="display: none;"></div>
+            <div id="slot-1" class="slot-container" style="display:none;"></div>
+            <div id="slot-2" class="slot-container" style="display:none;"></div>
+            <div id="slot-3" class="slot-container" style="display:none;"></div>
+            <div id="slot-4" class="slot-container" style="display:none;"></div>
         </div>
     </div>
 
