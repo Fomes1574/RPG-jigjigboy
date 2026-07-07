@@ -1,5 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
         import { getDatabase, ref, onValue, update, get, remove, runTransaction } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
                 const DB_PREFIX = "demo";
 
@@ -16,6 +17,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebas
 
         const app = initializeApp(firebaseConfig);
         const database = getDatabase(app);
+        const auth = getAuth(app);
 
         function normalizeDbPath(path = "") {
             return String(path || "").replace(/^\/+|\/+$/g, "");
@@ -49,13 +51,52 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebas
             return runTransaction(dbRef(path), updater);
         }
 
-        const usuarios = {
-            "dick":   { nome: "Dick", cargo: "Mestre", idFicha: null },
-            "lais":   { nome: "Lais", cargo: "Jogador", idFicha: "lais" },
-            "gomes":  { nome: "Gomes", cargo: "Jogador", idFicha: "gomes" },
-            "kamy":   { nome: "Kamy", cargo: "Jogador", idFicha: "kamy" },
-            "arthur": { nome: "Arthur", cargo: "Jogador", idFicha: "arthur" }
-        };
+        const CHARACTER_SLOTS = [
+            { id: "ficha1", label: "Ficha 1" },
+            { id: "ficha2", label: "Ficha 2" },
+            { id: "ficha3", label: "Ficha 3" },
+            { id: "ficha4", label: "Ficha 4" }
+        ];
+
+        const playersList = CHARACTER_SLOTS.map(s => s.id);
+
+        function getSlotLabel(id) {
+            return CHARACTER_SLOTS.find(s => s.id === id)?.label || id;
+        }
+
+        function getFichaDisplayName(id) {
+            return fichasNoBanco[id]?.nome || getSlotLabel(id);
+        }
+
+        function normalizeUsername(username = "") {
+            return String(username).trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9_-]/g, '');
+        }
+
+        function internalEmail(usernameKey) {
+            return `${usernameKey}@rpg-jigjigboy.local`;
+        }
+
+        function mostrarErroAuth(msg) {
+            const el = document.getElementById('msg-erro');
+            if(el) { el.textContent = msg; el.style.display = 'block'; }
+        }
+
+        function montarUsuarioAtual(firebaseUser, profile) {
+            if(profile.role === 'master') {
+                return { uid: firebaseUser.uid, username: profile.username, role: 'master', cargo: 'Mestre', idFicha: null, fichaId: null, label: 'Mestre' };
+            }
+            return { uid: firebaseUser.uid, username: profile.username, role: 'player', cargo: 'Jogador', idFicha: profile.fichaId, fichaId: profile.fichaId, label: getSlotLabel(profile.fichaId) };
+        }
+
+        const FICHA_INICIAL = { nome: "Personagem sem nome", tipo: "heroi", "hp-max": 20, "hp-atual": 20, "mana-max": 20, "mana-atual": 20 };
+
+        /*
+         * Reset administrativo: alterar senha de outro usuário do Firebase Auth exige
+         * Firebase Admin SDK, Cloud Functions ou Firebase Console. Não faça reset de
+         * senha de outro usuário diretamente no client. Sem backend, o dono do Firebase
+         * deve resetar/deletar usuários pelo Firebase Console. Uma liberação de ficha
+         * no banco não remove automaticamente a conta Firebase Auth antiga.
+         */
 
         const RACES = {
             "Humanos": { points: 3 },
@@ -148,8 +189,6 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebas
             return normalizeHabV1(habId, habFirebase); // habilidade custom — retorna compatível v1
         }
 
-        const playersList = ['lais', 'gomes', 'kamy', 'arthur'];
-
         let usuarioAtual = null; 
         let ameacaEmCombateGlobal = null;
         let hudVisivel = false;
@@ -157,10 +196,10 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebas
         let hordasNoBanco = {};
         let fichasNoBanco = {};
 
-        let slotsDeVisao = {
-            1: { ouvinte: null, idFicha: null, tipo: null, dados: {} },
-            2: { ouvinte: null, idFicha: null, tipo: null, dados: {} }
-        };
+        let slotsDeVisao = {};
+        for (let i = 1; i <= 4; i++) {
+            slotsDeVisao[i] = { ouvinte: null, idFicha: null, tipo: null, dados: {} };
+        }
 
         let combatLog = [];
         let combatLogRecolhido = true;
@@ -449,8 +488,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebas
                     if(slot.idFicha === id) return slot.dados?.nome || id;
                 }
                 if(fichasNoBanco[id]?.nome) return fichasNoBanco[id].nome;
-                const usuario = Object.values(usuarios).find(u => u.idFicha === id);
-                return usuario?.nome || id;
+                return getFichaDisplayName(id);
             }
             if(parts[0] === 'hordas') {
                 const hordaId = parts[1];
@@ -826,7 +864,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebas
             playersList.forEach(playerId => {
                 const slotHeroi = Object.entries(slotsDeVisao).find(([, slot]) => slot.tipo === 'heroi' && slot.idFicha === playerId);
                 const slotNum = slotHeroi ? slotHeroi[0] : null;
-                const dados = slotHeroi?.[1]?.dados || fichasNoBanco[playerId] || { nome: usuarios[playerId]?.nome || playerId };
+                const dados = slotHeroi?.[1]?.dados || fichasNoBanco[playerId] || { nome: getFichaDisplayName(playerId) };
                 const path = `fichas/${playerId}`;
                 entradas.push(criarEntradaTatica(path, dados, 'heroi', slotNum));
                 pathsIncluidos.add(path);
@@ -1032,7 +1070,7 @@ function gerarHtmlHeroi(numSlot) {
                         <div class="level-display" id="slot${numSlot}-level-display" data-current-level="1" style="font-size: 26px;">LV. <span id="slot${numSlot}-num-level">1</span></div>
                     </div>
                 </div>
-                <div><label>Jogador</label><input type="text" id="slot${numSlot}-jogador" class="editavel-slot${numSlot}" readonly></div>
+                <div><label>Ficha</label><input type="text" id="slot${numSlot}-jogador" class="editavel-slot${numSlot}" readonly></div>
                 <div>
                     <label>Raça</label>
                     <select id="slot${numSlot}-raca" class="editavel-slot${numSlot}">
@@ -1204,7 +1242,7 @@ window.toggleSidebarJogador = function(numSlot) {
                     <div style="display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap;">
                         <div><label style="color: #d95757;">Dano</label><input type="number" id="slot${numSlot}-ataque-dano" class="editavel-slot${numSlot}" placeholder="Valor" style="width: 80px; text-align: center; font-size: 16px; border-color: #8c1c13; color: #fff;"></div>
                         <div style="flex: 1;">
-                            <label style="color: #b89c72;">Alvos (Players)</label>
+                            <label style="color: #b89c72;">Alvos (Fichas)</label>
                             <div style="display: flex; gap: 15px; flex-wrap: wrap; background: rgba(20, 10, 5, 0.8); padding: 10px; border: 1px solid #5c3a21; border-radius: 4px; min-height: 20px; align-items: center;">${alvosHtml}</div>
                         </div>
                         <button class="editavel-slot${numSlot}" onclick="executarAtaque(${numSlot})" style="background: linear-gradient(to bottom, #8c1c13, #4a1111); border-color:#d95757; color: #fff; padding: 10px 20px; font-weight: bold; text-shadow: 1px 1px 2px black;">⚔️ ATACAR</button>
@@ -1249,47 +1287,110 @@ window.toggleSidebarJogador = function(numSlot) {
             return `<div class="container monstro-theme" id="container-slot${numSlot}-horda" style="border-color:#8b6d43;"></div>`;
         }
 
-        document.getElementById('slot-1').innerHTML = gerarHtmlHeroi(1) + gerarHtmlMonstro(1) + gerarHtmlContainerHorda(1);
-        document.getElementById('slot-2').innerHTML = gerarHtmlHeroi(2) + gerarHtmlMonstro(2) + gerarHtmlContainerHorda(2);
+        for (let i = 1; i <= 4; i++) {
+            document.getElementById(`slot-${i}`).innerHTML = gerarHtmlHeroi(i) + gerarHtmlMonstro(i) + gerarHtmlContainerHorda(i);
+        }
 
         // ==========================================
-        // LÓGICA DE LOGIN E INICIALIZAÇÃO
+        // LÓGICA DE AUTENTICAÇÃO E INICIALIZAÇÃO
         // ==========================================
-        window.fazerLogin = function() {
-            const digitado = document.getElementById('input-senha').value.trim().toLowerCase();
-            if (usuarios[digitado]) {
-                usuarioAtual = usuarios[digitado];
-                document.getElementById('tela-login').style.display = "none";
-                document.getElementById('tela-app').style.display = "block";
-                
-                document.getElementById('usuario-logado').innerText = usuarioAtual.nome;
-                document.getElementById('badge-cargo').innerText = usuarioAtual.cargo;
-                document.body.classList.add(usuarioAtual.cargo === "Mestre" ? 'is-mestre' : 'is-jogador');
-                initCombatUi();
-                
-                if(usuarioAtual.cargo === "Mestre") {
-                    document.getElementById('badge-cargo').style.borderColor = "#8c1c13";
-                    document.getElementById('badge-cargo').style.color = "#a84242";
-                    document.getElementById('painel-mestre').style.display = "flex";
-                    document.getElementById('sidebar-mestre').style.display = "flex";
-                    document.getElementById('btn-toggle-hud').style.display = "block"; 
-                    atualizarSidebarMestre();
-                    initHudGlobais();
-                } else {
-                    document.getElementById('seletor-jogador').style.display = "block";
-                    onValue(dbRef('fichas/' + usuarioAtual.idFicha), (snapshot) => {
-                        const dados = snapshot.val() || {};
-                        fichasNoBanco[usuarioAtual.idFicha] = dados;
-                        const spanNomeHeroi = document.getElementById('nome-heroi-jogador');
-                        if(spanNomeHeroi) spanNomeHeroi.textContent = dados['nome'] || "Herói Sem Nome";
-                    });
-                    abrirFichaNoSlot(1, 'heroi', usuarioAtual.idFicha);
-                }
-                iniciarOuvintesGerais();
+        window.mostrarAbaAuth = function(aba) {
+            document.getElementById('auth-login-panel').style.display = aba === 'login' ? 'block' : 'none';
+            document.getElementById('auth-register-panel').style.display = aba === 'register' ? 'block' : 'none';
+            const erro = document.getElementById('msg-erro');
+            if(erro) erro.style.display = 'none';
+        }
+
+        async function aplicarSessao(firebaseUser, profile) {
+            usuarioAtual = montarUsuarioAtual(firebaseUser, profile);
+            document.getElementById('tela-login').style.display = "none";
+            document.getElementById('tela-app').style.display = "block";
+            document.getElementById('usuario-logado').innerText = usuarioAtual.label;
+            document.getElementById('badge-cargo').innerText = usuarioAtual.cargo;
+            document.body.classList.toggle('is-mestre', usuarioAtual.cargo === "Mestre");
+            document.body.classList.toggle('is-jogador', usuarioAtual.cargo === "Jogador");
+            initCombatUi();
+            if(usuarioAtual.cargo === "Mestre") {
+                document.getElementById('badge-cargo').style.borderColor = "#8c1c13";
+                document.getElementById('badge-cargo').style.color = "#a84242";
+                document.getElementById('painel-mestre').style.display = "flex";
+                document.getElementById('sidebar-mestre').style.display = "flex";
+                document.getElementById('btn-toggle-hud').style.display = "block";
+                atualizarSidebarMestre();
+                initHudGlobais();
             } else {
-                document.getElementById('msg-erro').style.display = "block";
+                document.getElementById('seletor-jogador').style.display = "block";
+                onValue(dbRef('fichas/' + usuarioAtual.idFicha), (snapshot) => {
+                    const dados = snapshot.val() || {};
+                    fichasNoBanco[usuarioAtual.idFicha] = dados;
+                    const spanNomeHeroi = document.getElementById('nome-heroi-jogador');
+                    if(spanNomeHeroi) spanNomeHeroi.textContent = dados['nome'] || usuarioAtual.label;
+                });
+                abrirFichaNoSlot(1, 'heroi', usuarioAtual.idFicha);
+            }
+            iniciarOuvintesGerais();
+        }
+
+        window.criarAcesso = async function() {
+            const username = document.getElementById('input-cadastro-usuario').value.trim();
+            const usernameKey = normalizeUsername(username);
+            const senha = document.getElementById('input-cadastro-senha').value;
+            const confirmar = document.getElementById('input-cadastro-confirmar').value;
+            const vinculo = document.getElementById('select-cadastro-vinculo').value;
+            if(usernameKey.length < 3) return mostrarErroAuth('Usuário deve ter ao menos 3 caracteres válidos.');
+            if(senha.length < 6) return mostrarErroAuth('Senha deve ter ao menos 6 caracteres.');
+            if(senha !== confirmar) return mostrarErroAuth('Confirmação de senha não confere.');
+            if((await safeGet(`usernames/${usernameKey}`)).exists()) return mostrarErroAuth('Usuário já existe.');
+            if(vinculo === 'master' && (await safeGet('master/uid')).exists()) return mostrarErroAuth('Mestre já configurado.');
+            let cred;
+            try {
+                cred = await createUserWithEmailAndPassword(auth, internalEmail(usernameKey), senha);
+                const now = Date.now();
+                const profile = { username, usernameKey, role: vinculo === 'master' ? 'master' : 'player', fichaId: vinculo === 'master' ? null : vinculo, createdAt: now, updatedAt: now };
+                if(vinculo !== 'master') {
+                    const lock = await safeTransaction(`fichaLocks/${vinculo}`, atual => atual?.ownerUid ? atual : { ownerUid: cred.user.uid, usernameKey, lockedAt: now });
+                    if(lock.snapshot.val()?.ownerUid !== cred.user.uid) { await signOut(auth); return mostrarErroAuth('Essa ficha já possui dono.'); }
+                    if(!(await safeGet(`fichas/${vinculo}`)).exists()) await safeUpdate(`fichas/${vinculo}`, FICHA_INICIAL);
+                } else {
+                    await safeUpdate('master', { uid: cred.user.uid, usernameKey, createdAt: now });
+                }
+                await safeUpdate(`authProfiles/${cred.user.uid}`, profile);
+                await safeUpdate(`usernames/${usernameKey}`, { uid: cred.user.uid });
+                await aplicarSessao(cred.user, profile);
+            } catch(e) {
+                mostrarErroAuth(e?.code === 'auth/email-already-in-use' ? 'Usuário já existe.' : 'Não foi possível criar o acesso.');
             }
         }
+
+        window.fazerLogin = async function() {
+            const usernameKey = normalizeUsername(document.getElementById('input-usuario').value);
+            const senha = document.getElementById('input-senha').value;
+            if(usernameKey.length < 3 || !senha) return mostrarErroAuth('Informe usuário e senha.');
+            try {
+                const cred = await signInWithEmailAndPassword(auth, internalEmail(usernameKey), senha);
+                const snap = await safeGet(`authProfiles/${cred.user.uid}`);
+                if(!snap.exists()) { await signOut(auth); return mostrarErroAuth('Perfil de acesso não encontrado.'); }
+                await aplicarSessao(cred.user, snap.val());
+            } catch(e) {
+                mostrarErroAuth('Usuário ou senha inválidos.');
+            }
+        }
+
+        window.sair = async function() { await signOut(auth); }
+
+        onAuthStateChanged(auth, async (firebaseUser) => {
+            if(!firebaseUser) {
+                usuarioAtual = null;
+                document.getElementById('tela-login').style.display = 'flex';
+                document.getElementById('tela-app').style.display = 'none';
+                document.getElementById('sidebar-mestre').style.display = 'none';
+                document.body.classList.remove('is-mestre', 'is-jogador');
+                return;
+            }
+            if(usuarioAtual) return;
+            const snap = await safeGet(`authProfiles/${firebaseUser.uid}`);
+            if(snap.exists()) await aplicarSessao(firebaseUser, snap.val());
+        });
 
         function iniciarOuvintesGerais() {
             onValue(dbRef('lista_monstros'), (snapshot) => {
@@ -1348,13 +1449,13 @@ window.toggleSidebarJogador = function(numSlot) {
             }
 
             const renderizarTodos = (nomeAmeaca, htmlInimigos) => {
-                let htmlPlayers = '';
+                let htmlFichas = '';
                 playersList.forEach(p => {
-                    htmlPlayers += `<label class="checkbox-alvo" style="color:#dcd0ba; font-size:12px; margin-bottom:2px;"><input type="checkbox" value="${p}"> Aliado: ${p.toUpperCase()}</label>`;
+                    htmlFichas += `<label class="checkbox-alvo" style="color:#dcd0ba; font-size:12px; margin-bottom:2px;"><input type="checkbox" value="${p}"> Aliado: ${escapeHtml(getFichaDisplayName(p))}</label>`;
                 });
                 
                 let separator = `<div style="border-bottom: 1px dashed #5c1818; margin: 5px 0;"></div>`;
-                let finalHtml = htmlPlayers + separator + htmlInimigos;
+                let finalHtml = htmlFichas + separator + htmlInimigos;
 
                 if(nomeSpan1) nomeSpan1.innerText = nomeAmeaca;
                 if(nomeSpan2) nomeSpan2.innerText = nomeAmeaca;
@@ -1408,20 +1509,20 @@ window.toggleSidebarJogador = function(numSlot) {
         function atualizarSidebarMestre() {
             if(usuarioAtual.cargo !== "Mestre") return;
             
-            // Popula Jogadores
-            let htmlJogadores = '';
-            playersList.forEach(p => {
-                htmlJogadores += `
+            // Popula Fichas
+            let htmlFichasSidebar = '';
+            CHARACTER_SLOTS.forEach(slot => {
+                const nomePersonagem = fichasNoBanco[slot.id]?.nome || 'Sem personagem';
+                htmlFichasSidebar += `
                     <div class="item-acervo">
-                        <span class="item-acervo-nome">${p.toUpperCase()}</span>
+                        <span class="item-acervo-nome">${escapeHtml(slot.label)} — ${escapeHtml(nomePersonagem)}</span>
                         <div class="item-acervo-botoes">
-                            <button class="btn-slot-acervo" onclick="mestreAbrir(1, 'heroi', '${p}')">1</button>
-                            <button class="btn-slot-acervo" onclick="mestreAbrir(2, 'heroi', '${p}')">2</button>
+                            ${[1,2,3,4].map(n => `<button class="btn-slot-acervo" onclick="mestreAbrir(${n}, 'heroi', '${slot.id}')">${n}</button>`).join('')}
                         </div>
                     </div>
                 `;
             });
-            document.getElementById('cat-jogadores').innerHTML = htmlJogadores;
+            document.getElementById('cat-jogadores').innerHTML = htmlFichasSidebar;
 
             // Popula Monstros
             let htmlMonstros = '';
@@ -1430,8 +1531,7 @@ window.toggleSidebarJogador = function(numSlot) {
                     <div class="item-acervo">
                         <span class="item-acervo-nome">${escapeHtml(monstrosNoBanco[id].nome || id)}</span>
                         <div class="item-acervo-botoes">
-                            <button class="btn-slot-acervo" onclick="mestreAbrir(1, 'monstro', '${id}')">1</button>
-                            <button class="btn-slot-acervo" onclick="mestreAbrir(2, 'monstro', '${id}')">2</button>
+                            ${[1,2,3,4].map(n => `<button class="btn-slot-acervo" onclick="mestreAbrir(${n}, 'monstro', '${id}')">${n}</button>`).join('')}
                         </div>
                     </div>
                 `;
@@ -1445,8 +1545,7 @@ window.toggleSidebarJogador = function(numSlot) {
                     <div class="item-acervo">
                         <span class="item-acervo-nome">${escapeHtml(hordasNoBanco[id].nome || id)}</span>
                         <div class="item-acervo-botoes">
-                            <button class="btn-slot-acervo" onclick="mestreAbrir(1, 'horda', '${id}')">1</button>
-                            <button class="btn-slot-acervo" onclick="mestreAbrir(2, 'horda', '${id}')">2</button>
+                            ${[1,2,3,4].map(n => `<button class="btn-slot-acervo" onclick="mestreAbrir(${n}, 'horda', '${id}')">${n}</button>`).join('')}
                         </div>
                     </div>
                 `;
@@ -1498,9 +1597,8 @@ window.toggleSidebarJogador = function(numSlot) {
 
         window.mestreAbrir = function(numSlot, tipo, valor) {
             if(!valor) return;
-            const outroSlot = numSlot === 1 ? 2 : 1;
-            if (slotsDeVisao[outroSlot].idFicha === valor && slotsDeVisao[outroSlot].tipo === tipo) {
-                limparSlot(outroSlot);
+            for (let i = 1; i <= 4; i++) {
+                if (i !== numSlot && slotsDeVisao[i].idFicha === valor && slotsDeVisao[i].tipo === tipo) limparSlot(i);
             }
             abrirFichaNoSlot(numSlot, tipo, valor);
         }
@@ -1530,7 +1628,7 @@ window.toggleSidebarJogador = function(numSlot) {
         // LÓGICA DA HORDA (GERAR E RENDERIZAR)
         // ==========================================
         function alvosHtmlCheckbox(sufixo) {
-            return playersList.map(p => `<label class="checkbox-alvo"><input type="checkbox" value="${p}" class="alvo-ataque-${sufixo}"> ${p}</label>`).join('');
+            return playersList.map(p => `<label class="checkbox-alvo"><input type="checkbox" value="${p}" class="alvo-ataque-${sufixo}"> ${escapeHtml(getFichaDisplayName(p))}</label>`).join('');
         }
 
         function renderizarHtmlHordaDinamico(idHorda, membros, numSlot) {
@@ -1695,6 +1793,13 @@ window.toggleSidebarJogador = function(numSlot) {
         }
 
         window.abrirModalExp = function() {
+            const box = document.getElementById('modal-exp-checkboxes');
+            if(box) {
+                box.innerHTML = CHARACTER_SLOTS.map(slot => {
+                    const label = fichasNoBanco[slot.id]?.nome || slot.label;
+                    return `<label class="checkbox-alvo"><input type="checkbox" class="exp-target" value="${slot.id}"> ${escapeHtml(label)}</label>`;
+                }).join('');
+            }
             document.getElementById('modal-exp').style.display = 'flex';
             document.querySelectorAll('.exp-target').forEach(cb => cb.checked = false);
             document.getElementById('exp-amount-input').value = '';
@@ -2348,8 +2453,7 @@ window.toggleSidebarJogador = function(numSlot) {
             const temPermissao = (usuarioAtual.cargo === "Mestre") || (tipo === 'heroi' && usuarioAtual.idFicha === idFicha);
             
             if(tipo === 'heroi') {
-                let nomeJogadorObj = Object.values(usuarios).find(u => u.idFicha === idFicha);
-                let nomeJogador = nomeJogadorObj ? nomeJogadorObj.nome : '';
+                let nomeJogador = getSlotLabel(idFicha);
                 let elJogador = document.getElementById(`slot${numSlot}-jogador`);
                 if(elJogador) elJogador.value = nomeJogador;
             }
@@ -2724,7 +2828,7 @@ window.toggleSidebarJogador = function(numSlot) {
 
                     let hpAtual = toNumber(dados['hp-atual'], 0);
                     let manaAtual = toNumber(dados['mana-atual'], 0);
-                    const isHero = Object.values(usuarios).some(u => u.idFicha === idFicha);
+                    const isHero = playersList.includes(idFicha);
                     let hpMax = toNumber(dados['hp-max'], 20);
                     let manaMax = toNumber(dados['mana-max'], 20);
 
@@ -2931,8 +3035,7 @@ window.toggleSidebarJogador = function(numSlot) {
                     safeRemove('fichas/' + idAlvo);
                 }
 
-                if(slotsDeVisao[1].idFicha === idAlvo) limparSlot(1);
-                if(slotsDeVisao[2].idFicha === idAlvo) limparSlot(2);
+                for (let i = 1; i <= 4; i++) if(slotsDeVisao[i].idFicha === idAlvo) limparSlot(i);
             }
         }
 
@@ -2954,8 +3057,7 @@ window.toggleSidebarJogador = function(numSlot) {
                 }
 
                 seletor.value = "";
-                if(slotsDeVisao[1].idFicha === idAlvo) limparSlot(1);
-                if(slotsDeVisao[2].idFicha === idAlvo) limparSlot(2);
+                for (let i = 1; i <= 4; i++) if(slotsDeVisao[i].idFicha === idAlvo) limparSlot(i);
             }
         }
 
