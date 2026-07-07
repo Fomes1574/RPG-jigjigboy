@@ -1,0 +1,34 @@
+name: Apply Player Polish Loader
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/apply-player-polish-loader.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch-index:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Add polish loader
+        run: |
+          if ! grep -q 'player-polish-fixes.js' index.html; then
+            perl -0pi -e 's#(<script type="module" src="script\.js"></script>)#$1\n    <script type="module" src="player-polish-fixes.js"></script>#' index.html
+          fi
+      - name: Commit change
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          if git diff --cached --quiet; then
+            echo "No changes"
+          else
+            git commit -m "Carrega ajustes de usuário e HP"
+            git push
+          fi
